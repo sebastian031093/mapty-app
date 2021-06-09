@@ -18,18 +18,19 @@ class Workout{
   date = new Date();
   id = (Date.now() + '').slice(-10);
 
-  constructor(coords, distance, duracion){
+  constructor(coords, distance, duration){
     this.coords = coords; // [lat, lng]
     this.distance = distance; // in Km
-    this.duracion = duracion; // in min
+    this.duration = duration; // in min
 
   }
 }
 
 //child class
 class Running extends Workout {
-  constructor(coords, distance, duracion, cadence) {
-    super(coords, distance, duracion);
+  type = 'running';
+  constructor(coords, distance, duration, cadence) {
+    super(coords, distance, duration);
     this.cadence = cadence;
     this.calcPace();
   }
@@ -43,8 +44,9 @@ class Running extends Workout {
 
 //chils class
 class Cycling extends Workout {
-  constructor(coords, distance, duracion, elevationGain) {
-    super(coords, distance, duracion);
+  type = 'cycling';
+  constructor(coords, distance, duration, elevationGain) {
+    super(coords, distance, duration);
     this.elevationGain = elevationGain;
     this.calcSpeed();
   }
@@ -153,8 +155,7 @@ class App {
       }
         
 
-      const workout = new Running([lat, lng], distance, duration, cadence);
-      console.log(workout);
+      workout = new Running([lat, lng], distance, duration, cadence);
       console.log('Estas corriendo');
     }
 
@@ -163,20 +164,21 @@ class App {
       const elevation = +inputElevation.value;
       //Check if data is valid
       if (
-        !validInputs(distance, duracion, elevation) ||
-        !allPositive(distance, duracion)
+        !validInputs(distance, duration, elevation) ||
+        !allPositive(distance, duration)
       ){
         return alert('Inputs have to be positive numbers');
       }
-      const workout = new Cycling([lat, lng], distance, duration, elevation);
-      console.log(workout);
+      workout = new Cycling([lat, lng], distance, duration, elevation);
       console.log('Estas en bicy');
     }
 
     //Add new object to workout array
-    //this.#workouts.push(workout);
+    this.#workouts.push(workout);
+    console.log(workout);
 
     //Render workout on map marker
+    this.renderWorkoutMarker(workout);
 
     //Hide from + clear input fields
 
@@ -188,10 +190,14 @@ class App {
       inputDuration.value =
         '';
 
+    
+  }
+
+  renderWorkoutMarker(workout){
     //Display marker
     console.log('Hola entrenaste.');
     //Esto crea un marcador en el mapa
-    L.marker([lat, lng])
+    L.marker(workout.coords)
       .addTo(this.#map)
       .bindPopup(
         L.popup({
@@ -199,12 +205,14 @@ class App {
           minWidth: 100,
           autoClose: false,
           closeOnClick: false,
-          className: 'running-popup',
+          className: `${workout.type}-popup`,
         })
       )
-      .setPopupContent('Workoup')
+      .setPopupContent('workout')
       .openPopup();
   }
+
+
 };
 
 const app = new App();
