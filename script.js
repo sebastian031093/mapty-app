@@ -16,6 +16,7 @@ const inputElevation = document.querySelector('.form__input--elevation');
 class Workout{
   date = new Date();
   id = (Date.now() + '').slice(-10);
+  clicks = 0;
 
   constructor(coords, distance, duration){
     this.coords = coords; // [lat, lng]
@@ -31,6 +32,10 @@ class Workout{
 
     this.description = `${this.type[0].toUpperCase()}${this.type.slice(1)} on ${months[this.date.getMonth()]} ${this.date.getDate()}`;
   }
+
+  click(){
+    this.clicks++;
+  }
 }
 
 //child class
@@ -45,7 +50,7 @@ class Running extends Workout {
 
   calcPace(){
     // min / km
-    this.pace = this.duracion / this.distance;
+    this.pace = this.duration / this.distance;
     return this.pace;
   }
 }
@@ -62,7 +67,7 @@ class Cycling extends Workout {
 
   calcSpeed(){
     // Km/h
-    this.speed = this.distance / (this.duracion / 60);
+    this.speed = this.distance / (this.duration / 60);
     return this.speed;
   }
 }
@@ -77,6 +82,7 @@ class Cycling extends Workout {
 // APPLICATION ARCHITECTURE
 class App {
   #map;
+  #mapZoomLevel = 13;
   #mapEvent;
   #workouts = [];
 
@@ -87,6 +93,9 @@ class App {
 
     //draw donw botton: cambio de cadence a elevation.
     inputType.addEventListener('change', this._toggleElevationField);
+
+    //Delegaremos el evento de del click para los entrenamientos al contenedor workouts, pues estos elementos no exiten en el html y puede generar problemas.
+    containerWorkouts.addEventListener('click',this._moveToPopup.bind(this));
   }
 
   _getPosition() {
@@ -108,7 +117,7 @@ class App {
     const coords = [latitude, longitude];
     //Guarda un objeto en map de leaflet.
     //console.log(this);
-    this.#map = L.map('map').setView(coords, 13);
+    this.#map = L.map('map').setView(coords, this.#mapZoomLevel);
     //console.log(map);
     //el canva del mapa.
     L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
@@ -123,6 +132,20 @@ class App {
     this.#mapEvent = mapE;
     form.classList.remove('hidden');
     inputDistance.focus();
+  }
+
+  _hidenForm(){
+    //Emty inputs.
+
+    inputDistance.value =
+      inputDuration.value =
+      inputCadence.value =
+      inputDuration.value =
+        '';
+
+    form.style.display = 'none';
+    form.classList.add('hidden');
+    setTimeout(() => (form.style.display = 'grid'), 1000);
   }
 
   _toggleElevationField() {
@@ -193,6 +216,9 @@ class App {
     //Render workout on list.
     this._renderWorkkout(workout)
 
+    //Hiden from + clear input field
+    this._hidenForm();
+
     //Hide from + clear input fields
     //console.log(this);
     //Clear input fields
@@ -220,7 +246,7 @@ class App {
           className: `${workout.type}-popup`,
         })
       )
-      .setPopupContent('workout')
+      .setPopupContent(`${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${workout.description}`)
       .openPopup();
   }
 
@@ -256,27 +282,48 @@ class App {
         </div>
       </li>
       `;
+    }
 
-      if(workout.type === 'cycling'){
-        html += `
-          <div class="workout__details">
-            <span class="workout__icon">⚡️</span>
-            <span class="workout__value">${workout.speed.toFixed(1)}</span>
-            <span class="workout__unit">km/h</span>
-          </div>
-          <div class="workout__details">
-            <span class="workout__icon">⛰</span>
-            <span class="workout__value">${workout.elevationGain}</span>
-            <span class="workout__unit">m</span>
-          </div>
-        </li>
-        
-        `;
-      }
+    if (workout.type === 'cycling') {
+      html += `
+        <div class="workout__details">
+          <span class="workout__icon">⚡️</span>
+          <span class="workout__value">${workout.speed.toFixed(1)}</span>
+          <span class="workout__unit">km/h</span>
+        </div>
+        <div class="workout__details">
+          <span class="workout__icon">⛰</span>
+          <span class="workout__value">${workout.elevationGain}</span>
+          <span class="workout__unit">m</span>
+        </div>
+      </li> 
+      `;
     }
 
     form.insertAdjacentHTML('afterend',html);
 
+  }
+
+  _moveToPopup(event){
+
+    //TODO:Esta la forma de estar pendiente de un click dentro de deterinado elemento que contenga cierta palabra dentro de sus clases
+    const workoutEl = event.target.closest('.workout');
+    console.log(workoutEl);
+    //null retorna un freno de seguridad
+    if(!workoutEl) return
+    //TODO:Compara el valor de id del elemento en el array con el elemento generado en el html para crear un puente dentre el DOM y los valores almacenado en nuestro array y asi poder manipular esta informacion para crear inteccion entre ambos lados de nuestra app.S
+    const workout = this.#workouts.find(work => work.id === workoutEl.dataset.id);
+    console.log(workout);
+
+    this.#map.setView(workout.coords, this.#mapZoomLevel,{
+      animate:true,
+      pan:{
+        duration:1
+      }
+    });
+
+    //Using the public interaface
+    workout.click();
   }
 
 
