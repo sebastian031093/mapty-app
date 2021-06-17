@@ -87,16 +87,23 @@ class App {
   #workouts = [];
 
   constructor() {
-    this._getPosition();
-    //Ten en cuenta que al pasar las funciones dentro de un manejador de eventos "this" estara adjunta al objeto que trae ese manejador, por eso es necesario setear this con bid(), para que apunte a la clase y podamos usar las propiedades y metodos dentro de ella. OJO ok.S
-    form.addEventListener('submit', this._newWorkout.bind(this));
 
+    //Get user's position
+    this._getPosition();
+
+    //Ten en cuenta que al pasar las funciones dentro de un manejador de eventos "this" estara adjunta al objeto que trae ese manejador, por eso es necesario setear this con bid(), para que apunte a la clase y podamos usar las propiedades y metodos dentro de ella. OJO ok.S
+
+
+    //Get data from local storage.
+    this._getLocalStorage();
+
+    //Attach event handlers
+    form.addEventListener('submit', this._newWorkout.bind(this));
     //draw donw botton: cambio de cadence a elevation.
     inputType.addEventListener('change', this._toggleElevationField);
-
     //Delegaremos el evento de del click para los entrenamientos al contenedor workouts, pues estos elementos no exiten en el html y puede generar problemas.
     containerWorkouts.addEventListener('click',this._moveToPopup.bind(this));
-  }
+  };
 
   _getPosition() {
     if (navigator.geolocation) {
@@ -106,8 +113,8 @@ class App {
           alert('Could not get your position.');
         }
       );
-    }
-  }
+    };
+  };
 
   _loadMap(position) {
 
@@ -126,17 +133,25 @@ class App {
     }).addTo(this.#map);
     //Handling clicks on map.
     this.#map.on('click', this._showForm.bind(this));
-  }
+
+    this.#workouts.forEach(work => {
+
+      //En este punto si es posible hacer esta accion, pues el mapa ya esta cargado. cool
+      this._renderWorkoutMarker(work);
+    });
+  };
 
   _showForm(mapE) {
     this.#mapEvent = mapE;
     form.classList.remove('hidden');
     inputDistance.focus();
-  }
+  };
 
   _hidenForm(){
     //Emty inputs.
-
+    //Hide from + clear input fields
+    //console.log(this);
+    //Clear input fields
     inputDistance.value =
       inputDuration.value =
       inputCadence.value =
@@ -146,13 +161,13 @@ class App {
     form.style.display = 'none';
     form.classList.add('hidden');
     setTimeout(() => (form.style.display = 'grid'), 1000);
-  }
+  };
 
   _toggleElevationField() {
     //Selecionamos el padre al hijo mas cercano.
     inputElevation.closest('.form__row').classList.toggle('form__row--hidden');
     inputCadence.closest('.form__row').classList.toggle('form__row--hidden');
-  }
+  };
 
   _newWorkout(event) {
     //Valida si cada numero en el array es un entero. Estas cunciones pueden ser realmente cool para verificar multiples valores dentro de un if o alguna condicion que desees probar. 🤩
@@ -185,12 +200,12 @@ class App {
         !validInputs(distance, duration, cadence) || !allPositive(distance, duration, cadence)
       ) {
         return alert('Inputs have to be positive numbers');
-      }
+      };
         
 
       workout = new Running([lat, lng], distance, duration, cadence);
       console.log('Estas corriendo');
-    }
+    };
 
     //If workuot cycling, create cycling object
     if (type === 'cycling') {
@@ -204,7 +219,7 @@ class App {
       }
       workout = new Cycling([lat, lng], distance, duration, elevation);
       console.log('Estas en bicy');
-    }
+    };
 
     //Add new object to workout array
     this.#workouts.push(workout);
@@ -219,17 +234,11 @@ class App {
     //Hiden from + clear input field
     this._hidenForm();
 
-    //Hide from + clear input fields
-    //console.log(this);
-    //Clear input fields
-    inputDistance.value =
-      inputDuration.value =
-      inputCadence.value =
-      inputDuration.value =
-        '';
+    //Set local storage to all workouts.
+    this._setLocalStorage();
 
     
-  }
+  };
 
   _renderWorkoutMarker(workout){
     //Display marker
@@ -248,7 +257,7 @@ class App {
       )
       .setPopupContent(`${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${workout.description}`)
       .openPopup();
-  }
+  };
 
   _renderWorkkout(workout){
     //Dom manpulacion, crearemos un markout y lo insertaremos en el DOM.
@@ -302,7 +311,7 @@ class App {
 
     form.insertAdjacentHTML('afterend',html);
 
-  }
+  };
 
   _moveToPopup(event){
 
@@ -323,7 +332,36 @@ class App {
     });
 
     //Using the public interaface
-    workout.click();
+    //TODO:No lo puedes usar tan a la ligera, pues al almacenar y recuperar los datos del local staorage los workouts pierden la cadena de prototipos y puede generar errores.
+    //workout.click();
+  }
+
+  //TODO:localStorage podemos almacenar datos siempre y cuando sean muy pequeños, "that's because local storage is BLOCKING"
+  _setLocalStorage(){
+    localStorage.setItem('workouts', JSON.stringify(this.#workouts));
+  }
+
+  _getLocalStorage(){
+    const data = JSON.parse(localStorage.getItem('workouts'));
+    console.log(data);
+
+    if(!data) return //Si no hay datos return.
+
+    //guarda en nuestro array los workouts que tenemos en el local storage
+    this.#workouts = data;
+
+    //Mostramos los workouts que tenemos almacenados en el local storage con nuestro metodo creado para este trabajo.
+    this.#workouts.forEach(work => {
+      this._renderWorkkout(work);
+      //TODO:no lo puedes representar aqui pues el mapa aun no se carga cuando esta accion se lleavra acabo, cuidado esto hace parte del comportamineto asymcrono de js.
+      //this._renderWorkoutMarker(work);
+    })
+  };
+
+
+  reset(){
+    localStorage.removeItem('workouts');
+    location.reload();
   }
 
 
